@@ -1,0 +1,91 @@
+﻿@using System.Net.Http
+@using System.Text.Json.Serialization
+@page "/"
+
+<div class="container pb-5">
+	<h1>GitHub Subscription Manager</h1>
+
+	<form @onsubmit="SearchAsync">
+		<div class="row">
+			<div class="col">
+				<label for="username" class="form-label">Username:</label>
+				<input type="text" class="form-control" id="username" @bind="Username">
+			</div>
+			<div class="col">
+				<label for="pat" class="form-label">Access token:</label>
+				<input type="password" class="form-control" id="pat" @bind="AccessToken">
+			</div>
+			<div class="col-auto d-flex align-items-end">
+				<button class="btn btn-primary">Search</button>
+			</div>
+		</div>
+	</form>
+
+	@if (Models.Count > 0)
+	{
+		<h2 class="mt-2">Subscriptions (@Models.Count)</h2>
+		<ul class="list-group">
+		@foreach (var model in Models)
+		{
+			<li class="list-group-item @(model.IsSelected ? "active" : "")" @onclick="@(() => model.IsSelected = !model.IsSelected)">
+				@model.FullName
+			</li>
+		}
+		</ul>
+
+		<h2 class="mt-2">Actions</h2>
+		<button class="btn btn-danger" @onclick="UnsubscribeAsync">Unsubscribe</button>
+	}
+</div>
+
+@code
+{
+	private static HttpClient http = new HttpClient() { BaseAddress = new Uri("https://api.github.com") };
+
+	public string? Username { get; set; }
+	public string? AccessToken { get; set; }
+
+	protected List<SubscriptionModel> Models { get; set; } = new List<SubscriptionModel>();
+
+	protected async Task SearchAsync()
+	{
+		Models.Clear();
+		if (!String.IsNullOrEmpty(Username) && !String.IsNullOrEmpty(AccessToken))
+		{
+			http.DefaultRequestHeaders.Authorization = new BasicAuthenticationHeaderValue(Username, AccessToken);
+
+			int page = 1;
+			List<SubscriptionModel> models = null;
+			do
+			{
+				models = await http.GetFromJsonAsync<List<SubscriptionModel>>($"/user/subscriptions?per_page=100&page={page}");
+				if (models != null)
+					Models.AddRange(models);
+
+				page++;
+			} while (models != null && models.Count == 100);
+
+			Models.Sort((a, b) => a.FullName.CompareTo(b.FullName));
+		}
+	}
+
+	protected async Task UnsubscribeAsync()
+	{
+		foreach (var model in Models)
+		{
+			if (model.IsSelected)
+				await http.DeleteAsync($"/repos/{model.FullName}/subscription");
+		}
+
+		await SearchAsync();
+	}
+
+	public class SubscriptionModel
+	{
+		[JsonPropertyName("full_name")]
+		public string? FullName { get; set; }
+
+		[JsonIgnore]
+		public bool IsSelected { get; set; }
+	}
+}
