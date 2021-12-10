@@ -3,8 +3,12 @@
 @using Microsoft.AspNetCore.Components.Web
 @using System.Text.Json.Serialization
 
-<div class="container pb-5">
-	<h1>GitHub Subscriptions</h1>
+<nav class="navbar navbar-dark bg-dark">
+	<div class="container">
+		<span class="navbar-brand">GitHub Subscriptions</span>
+	</div>
+</nav>
+<div class="container mt-4 pb-5">
 
 	<form @onsubmit="SearchAsync">
 		<div class="row">
@@ -24,15 +28,15 @@
 		</div>
 	</form>
 
-	@if (IsLoading)
+	@if (WorkingMessage != null)
 	{
 		<div class="mt-4">
-			<em>Loading...</em>
+			<em>@WorkingMessage</em>
 		</div>
 	}
 	else if (Models.Count > 0)
 	{
-		<div class="row align-items-center mt-4">
+		<div class="row align-items-center mt-4 bg-white sticky-top">
 			<div class="col-auto">
 				<h2 class="mt-2">Subscriptions (@Models.Count)</h2>
 			</div>
@@ -43,7 +47,7 @@
 			<div class="col">
 			</div>
 			<div class="col-auto">
-				@Models.Count(m => m.IsSelected) selected
+				<span title="@String.Join(Environment.NewLine, Models.Where(m => m.IsSelected).Select(m => m.FullName))">@Models.Count(m => m.IsSelected) selected</span>
 			</div>
 			<div class="col-auto">
 				<button class="btn btn-danger" @onclick="UnsubscribeAsync" disabled=@(Models.Count(m => m.IsSelected) == 0)>Unsubscribe</button>
@@ -81,14 +85,14 @@
 	public string? Username { get; set; }
 	public string? AccessToken { get; set; }
 
-	protected bool IsLoading { get; set; }
+	protected string WorkingMessage { get; set; }
 	protected List<SubscriptionModel> Models { get; set; } = new List<SubscriptionModel>();
 
 	protected async Task SearchAsync()
 	{
 		try
 		{
-			IsLoading = true;
+			WorkingMessage = "Loading...";
 
 			Models.Clear();
 			if (!String.IsNullOrEmpty(Username) && !String.IsNullOrEmpty(AccessToken))
@@ -99,7 +103,7 @@
 				List<SubscriptionModel> models = null;
 				do
 				{
-					models = await http.GetFromJsonAsync<List<SubscriptionModel>>($"/user/subscriptions?per_page=100&page={page}");
+					models = await http.GetFromJsonAsync<List<SubscriptionModel>>($"/user/subscriptions?per_page=100&page={page}&v={DateTime.Now.ToFileTimeUtc()}");
 					if (models != null)
 						Models.AddRange(models);
 
@@ -108,19 +112,33 @@
 
 				Models.Sort((a, b) => a.FullName.CompareTo(b.FullName));
 			}
-		} 
-		finally
+
+			WorkingMessage = null;
+		}
+		catch (HttpRequestException e)
 		{
-			IsLoading = false;
+			if (e.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+				WorkingMessage = "Unauthorized - Invalid user name or access token";
+			else
+				throw;
 		}
 	}
 
 	protected async Task UnsubscribeAsync()
 	{
-		foreach (var model in Models)
+		try
 		{
-			if (model.IsSelected)
-				await http.DeleteAsync($"/repos/{model.FullName}/subscription");
+			WorkingMessage = "Unsubscribing...";
+
+			foreach (var model in Models)
+			{
+				if (model.IsSelected)
+					await http.DeleteAsync($"/repos/{model.FullName}/subscription");
+			}
+		}
+		finally
+		{
+			WorkingMessage = null;
 		}
 
 		await SearchAsync();
