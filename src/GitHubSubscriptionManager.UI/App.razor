@@ -18,7 +18,7 @@
 			</div>
 			<div class="col">
 				<label for="pat" class="form-label">
-					Access token (<a href="https://github.com/settings/tokens" target="_blank">settings</a>):
+					Access token (<a href="https://github.com/settings/tokens" tabindex="-1" target="_blank">settings</a>):
 				</label>
 				<input type="password" class="form-control" id="pat" @bind="AccessToken">
 			</div>
@@ -40,17 +40,17 @@
 			<div class="col-auto">
 				<h2 class="mt-2">Subscriptions (@Models.Count)</h2>
 			</div>
-			<div class="col">
+			<div class="col-12 col-lg">
 				<button class="btn btn-sm btn-primary" @onclick="(() => Models.ForEach(m => m.IsSelected = true))">Select all</button>
 				<button class="btn btn-sm btn-primary" @onclick="(() => Models.ForEach(m => m.IsSelected = false))">Unselect all</button>
 			</div>
 			<div class="col">
 			</div>
-			<div class="col-auto">
+			<div class="col-12 col-lg-auto my-2 my-lg-0">
 				<span title="@String.Join(Environment.NewLine, Models.Where(m => m.IsSelected).Select(m => m.FullName))">@Models.Count(m => m.IsSelected) selected</span>
 			</div>
 			<div class="col-auto">
-				<button class="btn btn-danger" @onclick="UnsubscribeAsync" disabled=@(Models.Count(m => m.IsSelected) == 0)>Unsubscribe</button>
+				<button class="btn btn-danger" @onclick="UnsubscribeAsync" disabled="@(Models.Count(m => m.IsSelected) == 0)">Unsubscribe</button>
 			</div>
 		</div>
 		@foreach (var owner in Models.GroupBy(m => m.Owner?.Login))
@@ -62,15 +62,22 @@
 				<div class="col">
 				</div>
 				<div class="col-auto">
-					<button class="btn btn-sm btn-link" @onclick="(() => Models.FindAll(m => m.Owner?.Login == owner.Key).ForEach(m => m.IsSelected = true))">Select all</button>
-					<button class="btn btn-sm btn-link" @onclick="(() => Models.FindAll(m => m.Owner?.Login == owner.Key).ForEach(m => m.IsSelected = false))">Unselect all</button>
+					<button class="btn btn-sm btn-primary" @onclick="(() => Models.FindAll(m => m.Owner?.Login == owner.Key).ForEach(m => m.IsSelected = true))">Select all</button>
+					<button class="btn btn-sm btn-primary" @onclick="(() => Models.FindAll(m => m.Owner?.Login == owner.Key).ForEach(m => m.IsSelected = false))">Unselect all</button>
 				</div>
 			</div>
 			<ul class="list-group mt-2">
 				@foreach(var model in owner)
 				{
-					<li class="list-group-item list-group-item-action @(model.IsSelected ? "list-group-item-info" : "")" @onclick="@(() => model.IsSelected = !model.IsSelected)">
-						@model.FullName
+					<li class="list-group-item list-group-item-action @(model.IsSelected ? "list-group-item-info" : "")">
+						<div class="row">
+							<div class="col" title="@model.Description" @onclick="@(() => model.IsSelected = !model.IsSelected)">
+								@model.Name
+							</div>
+							<div class="col-auto">
+								<a target="_blank" href="@model.HtmlUrl">www</a>
+							</div>
+						</div>
 					</li>
 				}
 			</ul>
@@ -146,8 +153,17 @@
 
 	public class SubscriptionModel
 	{
+		[JsonPropertyName("name")]
+		public string? Name { get; set; }
+
 		[JsonPropertyName("full_name")]
 		public string? FullName { get; set; }
+
+		[JsonPropertyName("description")]
+		public string? Description { get; set; }
+
+		[JsonPropertyName("html_url")]
+		public string? HtmlUrl { get; set; }
 
 		public OwnerModel? Owner { get; set; }
 
