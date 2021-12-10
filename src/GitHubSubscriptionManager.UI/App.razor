@@ -1,4 +1,12 @@
 ﻿@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using Microsoft.JSInterop
+@using System.Net.Http
 @using System.Text.Json.Serialization
 @page "/"
 
@@ -12,7 +20,9 @@
 				<input type="text" class="form-control" id="username" @bind="Username">
 			</div>
 			<div class="col">
-				<label for="pat" class="form-label">Access token:</label>
+				<label for="pat" class="form-label">
+					Access token (<a href="https://github.com/settings/tokens" target="_blank">settings</a>):
+				</label>
 				<input type="password" class="form-control" id="pat" @bind="AccessToken">
 			</div>
 			<div class="col-auto d-flex align-items-end">
@@ -21,20 +31,53 @@
 		</div>
 	</form>
 
-	@if (Models.Count > 0)
+	@if (IsLoading)
 	{
-		<h2 class="mt-2">Subscriptions (@Models.Count)</h2>
-		<ul class="list-group">
-		@foreach (var model in Models)
+		<div class="mt-4">
+			<em>Loading...</em>
+		</div>
+	}
+	else if (Models.Count > 0)
+	{
+		<div class="row align-items-center mt-4">
+			<div class="col-auto">
+				<h2 class="mt-2">Subscriptions (@Models.Count)</h2>
+			</div>
+			<div class="col">
+				<button class="btn btn-sm btn-primary" @onclick="(() => Models.ForEach(m => m.IsSelected = true))">Select all</button>
+				<button class="btn btn-sm btn-primary" @onclick="(() => Models.ForEach(m => m.IsSelected = false))">Unselect all</button>
+			</div>
+			<div class="col">
+			</div>
+			<div class="col-auto">
+				@Models.Count(m => m.IsSelected) selected
+			</div>
+			<div class="col-auto">
+				<button class="btn btn-danger" @onclick="UnsubscribeAsync" disabled=@(Models.Count(m => m.IsSelected) == 0)>Unsubscribe</button>
+			</div>
+		</div>
+		@foreach (var owner in Models.GroupBy(m => m.Owner?.Login))
 		{
-			<li class="list-group-item @(model.IsSelected ? "active" : "")" @onclick="@(() => model.IsSelected = !model.IsSelected)">
-				@model.FullName
-			</li>
+			<div class="row align-items-center mt-4">
+				<div class="col-auto">
+					<h4 class="fw-lighter">@owner.Key</h4>
+				</div>
+				<div class="col">
+				</div>
+				<div class="col-auto">
+					<button class="btn btn-sm btn-link" @onclick="(() => Models.FindAll(m => m.Owner?.Login == owner.Key).ForEach(m => m.IsSelected = true))">Select all</button>
+					<button class="btn btn-sm btn-link" @onclick="(() => Models.FindAll(m => m.Owner?.Login == owner.Key).ForEach(m => m.IsSelected = false))">Unselect all</button>
+				</div>
+			</div>
+			<ul class="list-group mt-2">
+				@foreach(var model in owner)
+				{
+					<li class="list-group-item list-group-item-action @(model.IsSelected ? "list-group-item-info" : "")" @onclick="@(() => model.IsSelected = !model.IsSelected)">
+						@model.FullName
+					</li>
+				}
+			</ul>
 		}
-		</ul>
-
-		<h2 class="mt-2">Actions</h2>
-		<button class="btn btn-danger" @onclick="UnsubscribeAsync">Unsubscribe</button>
 	}
 </div>
 
@@ -45,27 +88,37 @@
 	public string? Username { get; set; }
 	public string? AccessToken { get; set; }
 
+	protected bool IsLoading { get; set; }
 	protected List<SubscriptionModel> Models { get; set; } = new List<SubscriptionModel>();
 
 	protected async Task SearchAsync()
 	{
-		Models.Clear();
-		if (!String.IsNullOrEmpty(Username) && !String.IsNullOrEmpty(AccessToken))
+		try
 		{
-			http.DefaultRequestHeaders.Authorization = new BasicAuthenticationHeaderValue(Username, AccessToken);
+			IsLoading = true;
 
-			int page = 1;
-			List<SubscriptionModel> models = null;
-			do
+			Models.Clear();
+			if (!String.IsNullOrEmpty(Username) && !String.IsNullOrEmpty(AccessToken))
 			{
-				models = await http.GetFromJsonAsync<List<SubscriptionModel>>($"/user/subscriptions?per_page=100&page={page}");
-				if (models != null)
-					Models.AddRange(models);
+				http.DefaultRequestHeaders.Authorization = new BasicAuthenticationHeaderValue(Username, AccessToken);
 
-				page++;
-			} while (models != null && models.Count == 100);
+				int page = 1;
+				List<SubscriptionModel> models = null;
+				do
+				{
+					models = await http.GetFromJsonAsync<List<SubscriptionModel>>($"/user/subscriptions?per_page=100&page={page}");
+					if (models != null)
+						Models.AddRange(models);
 
-			Models.Sort((a, b) => a.FullName.CompareTo(b.FullName));
+					page++;
+				} while (models != null && models.Count == 100);
+
+				Models.Sort((a, b) => a.FullName.CompareTo(b.FullName));
+			}
+		} 
+		finally
+		{
+			IsLoading = false;
 		}
 	}
 
@@ -85,7 +138,16 @@
 		[JsonPropertyName("full_name")]
 		public string? FullName { get; set; }
 
+		public OwnerModel? Owner { get; set; }
+
 		[JsonIgnore]
 		public bool IsSelected { get; set; }
+	}
+
+	public class OwnerModel 
+	{
+		[JsonPropertyName("login")]
+		public string? Login { get; set; }
+
 	}
 }
