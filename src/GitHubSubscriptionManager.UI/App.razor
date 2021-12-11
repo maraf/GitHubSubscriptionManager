@@ -36,11 +36,11 @@
 	}
 	else if (Models.Count > 0)
 	{
-		<div class="row align-items-center mt-4 bg-white sticky-top">
+		<div class="row align-items-center mt-4 pb-2 bg-white sticky-top">
 			<div class="col-auto">
 				<h2 class="mt-2">Subscriptions (@Models.Count)</h2>
 			</div>
-			<div class="col-12 col-lg">
+			<div class="col-12 col-md">
 				<button class="btn btn-sm btn-primary" @onclick="(() => Models.ForEach(m => m.IsSelected = true))">Select all</button>
 				<button class="btn btn-sm btn-primary" @onclick="(() => Models.ForEach(m => m.IsSelected = false))">Unselect all</button>
 			</div>
