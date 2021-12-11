@@ -20,6 +20,7 @@ jobs:
       id: versions
       run: |
           $version = ${env:GITHUB_REF} -replace 'refs/tags/', ''
+          $version = $version.Substring(1)
           echo "::set-output name=BUILD_NAME::$version"
       shell: pwsh
 
