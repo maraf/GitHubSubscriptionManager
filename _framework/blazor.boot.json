@@ -7,7 +7,7 @@
   "linkerEnabled": true,
   "resources": {
     "assembly": {
-      "GitHubSubscriptionManager.UI.dll": "sha256-3aRe6JWGp6D00V\/MKv00VNkM3DgXoZOIa3mtNSdn5k4=",
+      "GitHubSubscriptionManager.UI.dll": "sha256-GXe014tjqMv90xBdR9x0xRMuR0VEeRXdZOTuoS6PnmA=",
       "IdentityModel.dll": "sha256-5REMYTQ0L37CymXwWYDcggUdAvnzu1ORuhHuRWjjvH0=",
       "Microsoft.AspNetCore.Components.dll": "sha256-kl+03zERwNrfw30TIBeUBnE96OPuj4UK+wv+KH\/SWFg=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-dGE6E8lp4OgSRD8HxpnhQtwrKe1jYbi6HN9vQz2evQ0=",
