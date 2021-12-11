@@ -1,0 +1,28 @@
+name: Build & publish on github pages
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  build:
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Prepare versions
+      id: versions
+      run: |
+          $version = ${env:GITHUB_REF} -replace 'refs/tags/', ''
+          echo "::set-output name=BUILD_NAME::$version"
+      shell: powershell
+
+    - name: Build
+      run: dotnet publish -c Release -o .\artifacts .\src\GitHubSubscriptionManager.UI\ -p:Version=${{ steps.versions.outputs.build_name }}
+
+    - name: Deploy
+      uses: JamesIves/github-pages-deploy-action@4.1.7
+      with:
+        branch: gh-pages
+        folder: artifacts.
